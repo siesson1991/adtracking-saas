@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum EventSource {
+  SHOPIFY
+  WOOCOMMERCE
+  BIGCOMMERCE
+  MAGENTO
+  CUSTOM_SITE_1
+  CUSTOM_SITE_2
+  META_ADS
+  GOOGLE_ADS
+  TIKTOK_ADS
+  X_ADS
+  SNAPCHAT_ADS
+  REDDIT_ADS
+  PINTEREST_ADS
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  
+  // Account status
+  status    AccountStatus @default(ACTIVE)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Last login tracking
+  lastLoginAt DateTime?
+  
+  // Relations
+  trackedEvents   TrackedEvent[]
+  usageCounters   UsageCounter[]
+  billingAccount  BillingAccount?
+  
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model TrackedEvent {
+  id        String      @id @default(cuid())
+  userId    String
+  source    EventSource
+  eventType String
+  createdAt DateTime    @default(now())
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("tracked_events")
+}
+
+model UsageCounter {
+  id            String   @id @default(cuid())
+  userId        String
+  year          Int
+  month         Int      // 1-12
+  eventCount    Int      @default(0)
+  estimatedCost Decimal  @default(0) @db.Decimal(10, 2)
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, year, month])
+  @@index([userId])
+  @@index([year, month])
+  @@map("usage_counters")
+}
+
+model BillingAccount {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  status     String   @default("ACTIVE") // ACTIVE, INACTIVE
+  freeQuota  Int      @default(100)
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@map("billing_accounts")
+}
